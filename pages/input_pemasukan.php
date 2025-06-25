@@ -46,6 +46,21 @@ if (isset($_POST['simpan'])) {
         echo "Error: " . mysqli_error($conn);
     }
 }
+// Ambil tahun sekarang
+$tahun_ini = date('Y');
+
+// Ambil data pemasukan berdasarkan tahun
+$data_rekap = mysqli_query($conn, "
+  SELECT * FROM pemasukan 
+  WHERE YEAR(tanggal) = '$tahun_ini'
+  ORDER BY id_pemasukan ASC
+");
+
+// Hitung total dana masuk
+$total_rekap = mysqli_fetch_assoc(mysqli_query($conn, "
+  SELECT SUM(jumlah) AS total FROM pemasukan 
+  WHERE YEAR(tanggal) = '$tahun_ini'
+"));
 ?>
 
 <!DOCTYPE html>
@@ -78,17 +93,12 @@ if (isset($_POST['simpan'])) {
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 p-10">
+    <main class="flex-1 p-10 flex flex-col items-center">
       <h2 class="text-2xl font-bold mb-6 text-purple-700">Form Input Pemasukan Dana</h2>
 
-      <?php if ($jumlahTerbilang): ?>
-        <div class="bg-green-100 text-green-800 p-4 rounded mb-6">
-          <strong>Jumlah dalam huruf:</strong><br>
-          <em><?= $jumlahTerbilang; ?></em>
-        </div>
-      <?php endif; ?>
+     
 
-      <div class="bg-white p-8 rounded-xl shadow-md max-w-2xl">
+    <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-4xl">
         <form method="POST" class="space-y-5">
           <div>
             <label class="block text-gray-700">Tanggal</label>
@@ -135,8 +145,48 @@ if (isset($_POST['simpan'])) {
           </button>
         </form>
       </div>
-    </main>
+      <!-- TABEL REKAP PEMASUKAN -->
+<div class="bg-white mt-12 p-8 rounded-xl shadow-md w-full max-w-4xl mx-auto">
+  <h3 class="text-xl font-bold text-purple-700 mb-4">📊 Rekap Pemasukan Tahun <?= $tahun_ini ?></h3>
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm text-left border">
+      <thead class="bg-purple-100">
+        <tr>
+          <th class="px-4 py-2 border">No</th>
+          <th class="px-4 py-2 border">Tanggal</th>
+          <th class="px-4 py-2 border">Sumber Pemasukan</th>
+          <th class="px-4 py-2 border">Jumlah</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php 
+        $no = 1; 
+        while ($row = mysqli_fetch_assoc($data_rekap)): ?>
+        <tr class="border-b">
+          <td class="px-4 py-2 border"><?= $no++ ?></td>
+          <td class="px-4 py-2 border"><?= $row['tanggal'] ?></td>
+          <td class="px-4 py-2 border"><?= $row['sumber'] ?></td>
+          <td class="px-4 py-2 border text-green-700 font-semibold">Rp <?= number_format($row['jumlah'], 0, ',', '.') ?></td>
+        </tr>
+        <?php endwhile; ?>
+               <tr class="bg-purple-50 font-semibold">
+  <td colspan="4" class="px-4 py-3 text-center border-t border-b">
+    <div class="text-lg text-green-700">
+      Total Dana Masuk: <strong>Rp <?= number_format($total_rekap['total'] ?? 0, 0, ',', '.') ?></strong>
+    </div>
+    <div class="text-sm text-gray-600 italic mt-1">
+      (<?= ucfirst(terbilang($total_rekap['total'] ?? 0)) ?> rupiah)
+    </div>
+  </td>
+</tr>
+
+  </tbody>
+    </table>
   </div>
+</div>
+    </main>
+  </div>  
+  
 
   <!-- FOOTER -->
   <footer class="text-center text-sm text-gray-500 py-4">

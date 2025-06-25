@@ -67,13 +67,27 @@ $users = mysqli_query($conn, "SELECT * FROM users ORDER BY id_user DESC");
   <title>Manajemen Pengguna</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex">
+<body class="bg-gray-100 min-h-screen flex flex-col">
 
+<!-- Header -->
+<header class="bg-purple-700 text-white px-6 py-6 shadow-lg flex justify-between items-center h-28">
+  <div>
+    <h1 class="text-2xl font-bold mb-1">Sistem Informasi Keuangan Desa</h1>
+    <p class="text-sm opacity-80">Dashboard Bendahara | Transparansi & Akuntabilitas</p>
+  </div>
+  <div class="text-right">
+    <p class="text-sm">Selamat datang, <strong>Bendahara</strong></p>
+    <a href="../logout.php" class="text-red-300 hover:text-white text-xs underline">Keluar</a>
+  </div>
+</header>
+
+<div class="flex flex-1">
   <!-- Sidebar -->
-  <aside class="w-64 bg-purple-700 text-white min-h-screen shadow-lg">
-    <div class="p-6 text-xl font-bold border-b border-purple-500">⚙️ Admin Panel</div>
-    <nav class="flex flex-col p-4 space-y-2">
-      <a href="dashboard_bendahara.php" class="hover:bg-purple-800 p-2 rounded">🏠 Dashboard</a>
+  <aside class="w-64 bg-purple-800 text-white min-h-full px-6 py-8">
+    <h2 class="text-xl font-bold mb-8 text-center">Menu</h2>
+    <nav class="space-y-3">
+       <a href="dashboard_bendahara.php" class="block bg-purple-700 px-4 py-2 rounded-md">⬅️ Kembali ke Dashboard</a>
+    </nav>
   </aside>
 
   <!-- Main Content -->
@@ -134,6 +148,7 @@ $users = mysqli_query($conn, "SELECT * FROM users ORDER BY id_user DESC");
       </div>
     </div>
   </main>
+</div>
 
 </body>
 </html>

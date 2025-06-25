@@ -1,9 +1,9 @@
 <?php
-session_start();
-if (!isset($_SESSION['id_user']) || $_SESSION['role'] !== 'kades') {
-    header("Location: login.php");
-    exit;
-}
+// session_start();
+// if (!isset($_SESSION['id_user']) || $_SESSION['role'] !== 'kades') {
+//     header("Location: login.php");
+//     exit;
+// }
 include '../config/koneksi.php';
 
 // Total Pemasukan
@@ -16,6 +16,18 @@ $pengeluaran = mysqli_fetch_assoc($pengeluaranQuery)['total'] ?? 0;
 
 // Sisa Saldo
 $sisa = $pemasukan - $pengeluaran;
+
+// Notifikasi pengajuan yang menunggu verifikasi
+$q1 = mysqli_query($conn, "SELECT id_ajuan FROM pengeluaran_ajuan WHERE status_ajuan = 'menunggu'");
+$menunggu_pengeluaran = $q1 ? mysqli_num_rows($q1) : 0;
+
+$q2 = mysqli_query($conn, "SELECT id_laporan FROM laporan_pertahap WHERE status_verifikasi = 'pending'");
+$menunggu_pertahap = $q2 ? mysqli_num_rows($q2) : 0;
+
+$q3 = mysqli_query($conn, "SELECT id_laporan FROM laporan_tahunan WHERE status_verifikasi = 'pending'");
+$menunggu_tahunan = $q3 ? mysqli_num_rows($q3) : 0;
+
+$total_notif = $menunggu_pengeluaran + $menunggu_pertahap + $menunggu_tahunan;
 ?>
 
 <!DOCTYPE html>
@@ -33,8 +45,7 @@ $sisa = $pemasukan - $pengeluaran;
     <nav class="space-y-3">
       <a href="dashboard_kades.php" class="block px-4 py-2 rounded bg-purple-800">🏠 Dashboard</a>
       <a href="verifikasi_pengeluaran.php" class="block hover:bg-purple-800 px-4 py-2 rounded">💸 Verifikasi Pengeluaran</a>
-      <a href="verifikasi_laporan_pertahap.php" class="block hover:bg-purple-800 px-4 py-2 rounded">📁 Verifikasi Laporan Pertahap</a>
-      <a href="verifikasi_laporan_tahunan.php" class="block hover:bg-purple-800 px-4 py-2 rounded">📑 Verifikasi LPJ Tahunan</a>
+      <a href="verifikasi_laporan.php" class="block hover:bg-purple-800 px-4 py-2 rounded">📁 Verifikasi Semua Laporan</a>
       <a href="../logout.php" class="block hover:bg-red-600 bg-red-500 text-white px-4 py-2 rounded mt-10">🚪 Logout</a>
     </nav>
   </aside>
@@ -43,6 +54,16 @@ $sisa = $pemasukan - $pengeluaran;
   <main class="flex-1 p-10">
     <h1 class="text-3xl font-bold text-purple-700 mb-6">Dashboard Kepala Desa</h1>
 
+    <?php if($total_notif > 0): ?>
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-6 rounded">
+      🔔 Anda memiliki <strong><?= $menunggu_pengeluaran ?></strong> pengajuan pengeluaran, <strong><?= $menunggu_pertahap ?></strong> laporan pertahap, dan <strong><?= $menunggu_tahunan ?></strong> LPJ tahunan yang menunggu verifikasi.
+      <div class="mt-2">
+        <a href="verifikasi_pengeluaran.php" class="underline font-semibold text-purple-700">📄 Lihat Pengeluaran</a> |
+        <a href="verifikasi_laporan.php" class="underline font-semibold text-purple-700">📑 Lihat Semua Laporan</a>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Menu Box -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
       <div class="bg-white shadow-md rounded-lg p-6">
@@ -50,17 +71,10 @@ $sisa = $pemasukan - $pengeluaran;
         <p class="text-gray-500 mt-2">Cek dan setujui pengeluaran dari bendahara.</p>
         <a href="verifikasi_pengeluaran.php" class="text-purple-600 mt-4 inline-block">Lihat Detail →</a>
       </div>
-
       <div class="bg-white shadow-md rounded-lg p-6">
-        <h2 class="text-xl font-semibold text-gray-700">Laporan Pertahap</h2>
-        <p class="text-gray-500 mt-2">Verifikasi laporan per tahap untuk tahun berjalan.</p>
-        <a href="verifikasi_laporan_pertahap.php" class="text-purple-600 mt-4 inline-block">Lihat Detail →</a>
-      </div>
-
-      <div class="bg-white shadow-md rounded-lg p-6">
-        <h2 class="text-xl font-semibold text-gray-700">LPJ Tahunan</h2>
-        <p class="text-gray-500 mt-2">Tinjau laporan pertanggungjawaban akhir tahun.</p>
-        <a href="verifikasi_laporan_tahunan.php" class="text-purple-600 mt-4 inline-block">Lihat Detail →</a>
+        <h2 class="text-xl font-semibold text-gray-700">Semua Laporan</h2>
+        <p class="text-gray-500 mt-2">Verifikasi laporan pertahap dan LPJ tahunan.</p>
+        <a href="verifikasi_laporan.php" class="text-purple-600 mt-4 inline-block">Lihat Detail →</a>
       </div>
     </div>
 
@@ -80,6 +94,5 @@ $sisa = $pemasukan - $pengeluaran;
       </div>
     </div>
   </main>
-
 </body>
 </html>

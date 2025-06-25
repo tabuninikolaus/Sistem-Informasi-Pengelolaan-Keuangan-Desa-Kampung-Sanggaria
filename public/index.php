@@ -1,30 +1,18 @@
 <?php
 include '../config/koneksi.php';
 
-// Hitung Total Pemasukan
-$pemasukan_q = mysqli_query($conn, "SELECT SUM(jumlah) AS total FROM pemasukan");
-$pemasukan = mysqli_fetch_assoc($pemasukan_q)['total'] ?? 0;
+// Ambil data ringkasan terbaru dari tabel publikasi_ringkasan
+$ringkasan = mysqli_query($conn, "SELECT * FROM publikasi_ringkasan ORDER BY id DESC LIMIT 1");
+$data = $ringkasan && mysqli_num_rows($ringkasan) > 0 ? mysqli_fetch_assoc($ringkasan) : null;
 
-// Hitung Total Pengeluaran
-$pengeluaran_q = mysqli_query($conn, "SELECT SUM(jumlah) AS total FROM pengeluaran");
-$pengeluaran = mysqli_fetch_assoc($pengeluaran_q)['total'] ?? 0;
-
-// Hitung Sisa Dana
-$sisa_dana = $pemasukan - $pengeluaran;
-
-// Jumlah Kegiatan
-$jumlah_kegiatan = mysqli_num_rows(mysqli_query($conn, "SELECT * FROM anggaran"));
-
-// Ambil data kegiatan dan hitung realisasi
-$kegiatan = mysqli_query($conn, "SELECT * FROM anggaran");
-function getRealisasi($conn, $id_anggaran, $alokasi_dana) {
-  $query = mysqli_query($conn, "SELECT SUM(jumlah) as total FROM pengeluaran WHERE id_anggaran='$id_anggaran'");
-  $hasil = mysqli_fetch_assoc($query);
-  $total_pengeluaran = $hasil['total'] ?? 0;
-  if ($alokasi_dana == 0) return '0%';
-  $persen = round(($total_pengeluaran / $alokasi_dana) * 100);
-  return $persen . '%';
+// Ambil data kegiatan yang didanai
+$kegiatan = mysqli_query($conn, "SELECT * FROM publikasi_kegiatan ORDER BY id_kegiatan DESC");
+$ringkasan = mysqli_query($conn, "SELECT * FROM publikasi_ringkasan ORDER BY id_ringkasan DESC LIMIT 1");
+if (!$ringkasan) {
+  die("Query publikasi_ringkasan gagal: " . mysqli_error($conn));
 }
+$data = mysqli_fetch_assoc($ringkasan);
+
 ?>
 
 <!DOCTYPE html>
@@ -70,19 +58,19 @@ function getRealisasi($conn, $id_anggaran, $alokasi_dana) {
   <div class="grid md:grid-cols-4 gap-6 text-center">
     <div class="bg-white p-6 shadow rounded-xl">
       <h3 class="text-lg font-semibold text-gray-600">Total Pemasukan</h3>
-      <p class="text-2xl font-bold text-green-600">Rp <?= number_format($pemasukan, 0, ',', '.') ?></p>
+      <p class="text-2xl font-bold text-green-600">Rp <?= number_format($data['total_pemasukan'] ?? 0, 0, ',', '.') ?></p>
     </div>
     <div class="bg-white p-6 shadow rounded-xl">
       <h3 class="text-lg font-semibold text-gray-600">Jumlah Kegiatan</h3>
-      <p class="text-2xl font-bold text-blue-600"><?= $jumlah_kegiatan ?> Kegiatan</p>
+      <p class="text-2xl font-bold text-blue-600"><?= $data['jumlah_kegiatan'] ?? 0 ?> Kegiatan</p>
     </div>
     <div class="bg-white p-6 shadow rounded-xl">
       <h3 class="text-lg font-semibold text-gray-600">Total Pengeluaran</h3>
-      <p class="text-2xl font-bold text-red-600">Rp <?= number_format($pengeluaran, 0, ',', '.') ?></p>
+      <p class="text-2xl font-bold text-red-600">Rp <?= number_format($data['total_pengeluaran'] ?? 0, 0, ',', '.') ?></p>
     </div>
     <div class="bg-white p-6 shadow rounded-xl">
       <h3 class="text-lg font-semibold text-gray-600">Sisa Dana</h3>
-      <p class="text-2xl font-bold text-indigo-600">Rp <?= number_format($sisa_dana, 0, ',', '.') ?></p>
+      <p class="text-2xl font-bold text-indigo-600">Rp <?= number_format($data['sisa_dana'] ?? 0, 0, ',', '.') ?></p>
     </div>
   </div>
 </section>
@@ -105,9 +93,7 @@ function getRealisasi($conn, $id_anggaran, $alokasi_dana) {
           <td class="border px-4 py-2 text-center"><?= $no++ ?></td>
           <td class="border px-4 py-2"><?= htmlspecialchars($row['nama_kegiatan']) ?></td>
           <td class="border px-4 py-2">Rp <?= number_format($row['alokasi_dana'], 0, ',', '.') ?></td>
-          <td class="border px-4 py-2 text-center text-indigo-700 font-semibold">
-            <?= getRealisasi($conn, $row['id_anggaran'], $row['alokasi_dana']) ?>
-          </td>
+          <td class="border px-4 py-2 text-center text-indigo-700 font-semibold"><?= $row['realisasi_persen'] ?>%</td>
         </tr>
         <?php endwhile; ?>
       </tbody>
