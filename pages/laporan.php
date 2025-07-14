@@ -91,6 +91,16 @@ function getTotalPengeluaranByAnggaran($conn, $id_anggaran) {
   $row = mysqli_fetch_assoc($query);
   return $row['total'] ?? 0;
 }
+function getTotalPengeluaranSampaiTahap($conn, $id_anggaran, $endMonth) {
+  $result = mysqli_query($conn, "
+    SELECT SUM(jumlah) as total 
+    FROM pengeluaran 
+    WHERE id_anggaran='$id_anggaran' AND MONTH(tanggal) BETWEEN 1 AND $endMonth
+  ");
+  $row = mysqli_fetch_assoc($result);
+  return $row['total'] ?? 0;
+}
+
 
 function getStatusVerifikasiLaporan($conn, $jenis_laporan, $tahap, $tahun) {
   $sql = ($jenis_laporan === 'tahunan')
@@ -140,24 +150,14 @@ function cekPerubahanData($conn, $jenis_laporan, $tahap, $tahun) {
   <title>Laporan Keuangan Desa</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
-  <header class="bg-purple-700 text-white px-6 py-6 shadow-lg flex justify-between items-center h-28">
-  <div>
-    <h1 class="text-2xl font-bold mb-1">💰 Sistem Informasi Keuangan Desa</h1>
-    <p class="text-sm opacity-80">Dashboard Bendahara | Transparansi & Akuntabilitas</p>
-  </div>
-  <div class="text-right">
-    <p class="text-sm">👋 Selamat datang, <strong>Bendahara</strong></p>
-    <a href="../logout.php" class="text-red-300 hover:text-white text-xs underline">Keluar</a>
-  </div>
-</header>
+<body class="bg-[#f5f7fa] text-gray-800 font-sans">
+  <!-- HEADER -->
+<?php include '../includes/header.php'; ?>
+
 <div class="flex">
-  <aside class="w-64 bg-purple-800 text-white min-h-screen px-6 py-8">
-    <h2 class="text-xl font-bold mb-8 text-center">Menu</h2>
-    <nav class="space-y-3">
-       <a href="dashboard_bendahara.php" class="block bg-purple-700 px-4 py-2 rounded-md">⬅️ Kembali ke Dashboard</a>
-    </nav>
-  </aside>
+ <!-- SIDEBAR -->
+<?php include '../includes/sidebar.php'; ?>
+
   <main class="flex-1 p-6">
     <div class="bg-white p-6 rounded shadow">
       <h1 class="text-2xl font-bold text-green-700 mb-6">📋 Laporan Keuangan Pertahap</h1>
@@ -169,9 +169,13 @@ function cekPerubahanData($conn, $jenis_laporan, $tahap, $tahun) {
       ];
       $tahun = date('Y');
       foreach ($tahapan as $key => [$label, $start, $end]):
-        $anggaran = getAnggaranByTahapCustom($conn, $start, $end, $tahun, $key);
-        $verif = getStatusVerifikasiLaporan($conn, 'pertahap', $key, $tahun);
-        $perubahan = cekPerubahanData($conn, 'pertahap', $key, $tahun);
+      $verif = getStatusVerifikasiLaporan($conn, 'pertahap', $key, $tahun);
+      $perubahan = cekPerubahanData($conn, 'pertahap', $key, $tahun);
+      if ($verif['status_ajuan'] === 'disetujui' && !$perubahan) {
+      echo "<a href='share_laporan_publik.php?tahap=$key&tahun=$tahun' 
+      class='bg-purple-600 text-white px-3 py-1 rounded' onclick=\"return confirm('Bagikan laporan ini ke publik?')\">📤 Share ke Publik</a>";
+            }
+      $anggaran = getAnggaranByTahapCustom($conn, $start, $end, $tahun, $key); 
       ?>
       <div class="mb-10">
         <h2 class="text-lg font-semibold text-green-600 mb-2"><?= $label ?></h2>
@@ -187,8 +191,8 @@ function cekPerubahanData($conn, $jenis_laporan, $tahap, $tahun) {
             </thead>
             <tbody>
             <?php foreach ($anggaran as $a):
-              $total = getTotalPengeluaranTahap($conn, $a['id_anggaran'], $start, $end);
-              $persen = $a['alokasi_dana'] > 0 ? round(($total / $a['alokasi_dana']) * 100) : 0;
+             $total = getTotalPengeluaranSampaiTahap($conn, $a['id_anggaran'], $end);
+             $persen = $a['alokasi_dana'] > 0 ? round(($total / $a['alokasi_dana']) * 100) : 0;
               $detail = getPengeluaranTahap($conn, $a['id_anggaran'], $start, $end);
             ?>
               <tr>
@@ -263,107 +267,123 @@ function cekPerubahanData($conn, $jenis_laporan, $tahap, $tahun) {
 
         </div>
       </div>
+      <!-- LAPORAN LPJ TAHUNAN -->
       <?php endforeach; ?>
+                
+                <h2 class="text-2xl font-bold text-indigo-700 mt-10 mb-4">📁 Laporan Tahunan (LPJ)</h2>
 
-      <h2 class="text-2xl font-bold text-indigo-700 mt-10 mb-4">📁 Laporan Tahunan (LPJ)</h2>
-      <form method="GET" class="mb-4">
-        <label class="mr-2">Tahun:</label>
-        <select name="tahun" onchange="this.form.submit()" class="border px-2 py-1 rounded">
-          <option value="">-- Pilih Tahun --</option>
-          <?php foreach (getTahunList($conn) as $t): ?>
-            <option value="<?= $t ?>" <?= (isset($_GET['tahun']) && $_GET['tahun'] == $t) ? 'selected' : '' ?>><?= $t ?></option>
-          <?php endforeach; ?>
-        </select>
-      </form>
+<form method="GET" class="mb-4">
+  <label class="mr-2">Tahun:</label>
+  <select name="tahun" onchange="this.form.submit()" class="border px-2 py-1 rounded">
+    <option value="">-- Pilih Tahun --</option>
+    <?php foreach (getTahunList($conn) as $t): ?>
+      <option value="<?= $t ?>" <?= (isset($_GET['tahun']) && $_GET['tahun'] == $t) ? 'selected' : '' ?>>
+        <?= $t ?>
+      </option>
+    <?php endforeach; ?>
+  </select>
+</form>
 
-      <?php if (isset($_GET['tahun'])):
-        $tahun = $_GET['tahun'];
-        $verif = getStatusVerifikasiLaporan($conn, 'tahunan', 'tahunan', $tahun);
-        $perubahan = cekPerubahanData($conn, 'tahunan', 'tahunan', $tahun);
-        $data = getAnggaranByTahun($conn, $tahun);
-      ?>
-      <div class="overflow-auto mb-4">
-        <table class="w-full border text-sm">
-          <thead class="bg-indigo-100">
-            <tr>
-              <th class="border px-2 py-1">Nama Kegiatan</th>
-              <th class="border px-2 py-1">Alokasi Dana</th>
-              <th class="border px-2 py-1">Pengeluaran</th>
-              <th class="border px-2 py-1">Realisasi (%)</th>
-            </tr>
-          </thead>
-          <tbody>
-          <?php while ($a = mysqli_fetch_assoc($data)):
-            $total = getTotalPengeluaranByAnggaran($conn, $a['id_anggaran']);
-           $persen = getPersentaseRealisasi($conn, $a['id_anggaran']);
-          ?>
-            <tr>
-              <td class="border px-2 py-1"><?= $a['nama_kegiatan'] ?></td>
-              <td class="border px-2 py-1">Rp <?= number_format($a['alokasi_dana'], 0, ',', '.') ?></td>
-              <td class="border px-2 py-1">Rp <?= number_format($total, 0, ',', '.') ?></td>
-              <td class="border px-2 py-1"><?= $persen ?>%</td>
-            </tr>
-          <?php endwhile; ?>
-          </tbody>
-        </table>
-      </div>
-      <div class="flex gap-2 items-center">
-        <a href="export_pdf.php?tahap=tahunan&tahun=<?= $tahun ?>" class="bg-green-600 text-white px-3 py-1 rounded">Unduh PDF</a>
-        <a href="export_excel.php?tahap=tahunan&tahun=<?= $tahun ?>" class="bg-blue-600 text-white px-3 py-1 rounded">Unduh Excel</a>
-        <?php
-          if (!$verif) {
-            echo "<span class='text-sm text-gray-500'>Belum diajukan</span>
-            <button onclick=\"showModalAjukan('tahunan', 'tahunan', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan</button>";
-          } elseif ($verif['status_ajuan'] === 'menunggu') {
-            echo '<span class="text-sm italic text-gray-500">Menunggu verifikasi</span>';
-          } elseif ($verif['status_ajuan'] === 'ditolak') {
-            echo "<span class='text-sm text-red-600'>Verifikasi ditolak</span>
-            <button onclick=\"showModalAjukan('tahunan', 'tahunan', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan Ulang</button>";
-          } elseif ($verif['status_ajuan'] === 'disetujui' && $perubahan) {
-            echo "<span class='text-sm text-orange-600'>Ada perubahan data, ajukan ulang</span>
-            <button onclick=\"showModalAjukan('tahunan', 'tahunan', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan Ulang</button>";
-          } elseif ($verif['status_ajuan'] === 'disetujui') {
-            echo "<span class='text-sm text-green-600'>Telah diverifikasi</span>
-            <button onclick=\"showModalAjukan('tahunan', 'tahunan', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan</button>";
-          }
-        ?>
-      </div>
-      <?php endif; ?>
-    </div>
-  </main>
+<?php if (isset($_GET['tahun'])):
+  $tahun = $_GET['tahun'];
+  $verif = getStatusVerifikasiLaporan($conn, 'tahunan', 'tahunan', $tahun);
+  $perubahan = cekPerubahanData($conn, 'tahunan', 'tahunan', $tahun);
+  $data = getAnggaranByTahun($conn, $tahun);
+?>
+
+<div class="overflow-auto mb-4">
+  <table class="w-full border text-sm">
+    <thead class="bg-indigo-100">
+      <tr>
+        <th class="border px-2 py-1">Nama Kegiatan</th>
+        <th class="border px-2 py-1">Alokasi Dana</th>
+        <th class="border px-2 py-1">Pengeluaran</th>
+        <th class="border px-2 py-1">Realisasi (%)</th>
+      </tr>
+    </thead>
+    <tbody>
+    <?php while ($a = mysqli_fetch_assoc($data)):
+      $total = getTotalPengeluaranByAnggaran($conn, $a['id_anggaran']);
+      $persen = getPersentaseRealisasi($conn, $a['id_anggaran']);
+    ?>
+      <tr>
+        <td class="border px-2 py-1"><?= $a['nama_kegiatan'] ?></td>
+        <td class="border px-2 py-1">Rp <?= number_format($a['alokasi_dana'], 0, ',', '.') ?></td>
+        <td class="border px-2 py-1">Rp <?= number_format($total, 0, ',', '.') ?></td>
+        <td class="border px-2 py-1"><?= $persen ?>%</td>
+      </tr>
+    <?php endwhile; ?>
+    </tbody>
+  </table>
 </div>
 
-<!-- Modal Ajukan -->
-<div id="modal-ajukan" class="fixed inset-0 bg-black bg-opacity-40 hidden z-50">
-  <div class="flex items-center justify-center min-h-screen">
-    <div class="bg-white p-6 rounded shadow-lg w-96">
-      <h2 class="text-lg font-bold mb-2 text-green-700">Konfirmasi Pengajuan</h2>
-      <p class="text-sm mb-4" id="modal-ajukan-text">Apakah Anda yakin ingin mengajukan laporan ini?</p>
-      <form method="POST" action="ajukan_laporan.php">
-        <input type="hidden" id="jenis_laporan" name="jenis_laporan">
-        <input type="hidden" id="tahap" name="tahap">
-        <input type="hidden" id="tahun" name="tahun">
-        <div class="flex justify-end gap-2">
-          <button type="button" onclick="hideModalAjukan()" class="px-4 py-1 bg-gray-400 text-white rounded">Batal</button>
-          <button type="submit" class="px-4 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700">Ajukan</button>
-        </div>
-      </form>
-    </div>
-  </div>
+<div class="flex flex-wrap gap-2 items-center">
+  <a href="export_pdf.php?tahap=tahunan&tahun=<?= $tahun ?>" class="bg-green-600 text-white px-3 py-1 rounded">📄 Unduh PDF</a>
+  <a href="export_excel.php?tahap=tahunan&tahun=<?= $tahun ?>" class="bg-blue-600 text-white px-3 py-1 rounded">📊 Unduh Excel</a>
+
+  <?php if (isset($verif) && $verif): ?>
+  <?php if ($verif['status_ajuan'] === 'menunggu'): ?>
+    <span class="text-sm italic text-gray-500">Menunggu verifikasi</span>
+  <?php elseif ($verif['status_ajuan'] === 'ditolak'): ?>
+    <span class="text-sm text-red-600">Verifikasi ditolak</span>
+    <button onclick="showModalAjukan('tahunan', 'tahunan', <?= $tahun ?>)" class="bg-yellow-500 text-white px-2 py-1 rounded">Ajukan Ulang</button>
+  <?php elseif ($verif['status_ajuan'] === 'disetujui' && $perubahan): ?>
+    <span class="text-sm text-orange-600">Ada perubahan data, ajukan ulang</span>
+    <button onclick="showModalAjukan('tahunan', 'tahunan', <?= $tahun ?>)" class="bg-yellow-500 text-white px-2 py-1 rounded">Ajukan Ulang</button>
+  <?php elseif ($verif['status_ajuan'] === 'disetujui'): ?>
+    <span class="text-sm text-green-600">Telah diverifikasi</span>
+    <form action="share_laporan_publik.php" method="get" class="inline-block">
+      <input type="hidden" name="tahap" value="tahunan">
+      <input type="hidden" name="tahun" value="<?= $tahun ?>">
+      <button type="submit" class="bg-indigo-600 text-white px-3 py-1 rounded ml-2">🔗 Share Publik</button>
+    </form>
+  <?php endif; ?>
+  <?php else: ?>
+  <span class="text-sm text-gray-500">Belum diajukan</span>
+  <button onclick="showModalAjukan('tahunan', 'tahunan', <?= $tahun ?>)" class="bg-yellow-500 text-white px-2 py-1 rounded">Ajukan</button>
+<?php endif; ?>
+
 </div>
 
-<script>
-function showModalAjukan(jenis, tahap, tahun) {
-  document.getElementById("modal-ajukan").classList.remove("hidden");
-  document.getElementById("jenis_laporan").value = jenis;
-  document.getElementById("tahap").value = tahap;
-  document.getElementById("tahun").value = tahun;
-  const label = jenis === 'tahunan' ? 'Tahunan' : tahap.replace('_', ' ').toUpperCase();
-  document.getElementById("modal-ajukan-text").innerText = `Yakin ingin mengajukan laporan ${label} tahun ${tahun} kepada Kepala Desa?`;
-}
-function hideModalAjukan() {
-  document.getElementById("modal-ajukan").classList.add("hidden");
-}
+<?php endif; ?>
+</div>
+</div>
+<!-- FOOTER -->
+<?php include '../includes/footer.php'; ?>
+          <!-- Modal Ajukan -->
+          <div id="modal-ajukan" class="fixed inset-0 bg-black bg-opacity-40 hidden z-50">
+            <div class="flex items-center justify-center min-h-screen">
+              <div class="bg-white p-6 rounded shadow-lg w-96">
+                <h2 class="text-lg font-bold mb-2 text-green-700">Konfirmasi Pengajuan</h2>
+                <p class="text-sm mb-4" id="modal-ajukan-text">Apakah Anda yakin ingin mengajukan laporan ini?</p>
+                <form method="POST" action="ajukan_laporan.php">
+                  <input type="hidden" id="jenis_laporan" name="jenis_laporan">
+                  <input type="hidden" id="tahap" name="tahap">
+                  <input type="hidden" id="tahun" name="tahun">
+                  <div class="flex justify-end gap-2">
+                    <button type="button" onclick="hideModalAjukan()" class="px-4 py-1 bg-gray-400 text-white rounded">Batal</button>
+                    <button type="submit" class="px-4 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700">Ajukan</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+            <script>
+            function showModalAjukan(jenis, tahap, tahun) {
+              document.getElementById("modal-ajukan").classList.remove("hidden");
+              document.getElementById("jenis_laporan").value = jenis;
+              document.getElementById("tahap").value = tahap;
+              document.getElementById("tahun").value = tahun;
+              const label = jenis === 'tahunan' ? 'Tahunan' : tahap.replace('_', ' ').toUpperCase();
+              document.getElementById("modal-ajukan-text").innerText = `Yakin ingin mengajukan laporan ${label} tahun ${tahun} kepada Kepala Desa?`;
+            }
+            function hideModalAjukan() {
+              document.getElementById("modal-ajukan").classList.add("hidden");
+            }
 </script>
+
 </body>
+
 </html>
+

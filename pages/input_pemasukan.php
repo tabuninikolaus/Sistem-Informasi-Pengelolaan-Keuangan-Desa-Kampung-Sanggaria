@@ -2,11 +2,11 @@
 include '../config/koneksi.php';
 session_start();
 
-// Cek hak akses
-if (!isset($_SESSION['id_user']) || $_SESSION['role'] !== 'admin') {
-    header("Location: login.php");
-    exit;
-}
+// // Cek hak akses
+// if (!isset($_SESSION['id_user']) || $_SESSION['role'] !== 'admin') {
+//     header("Location: login.php");
+//     exit;
+// }
 
 // Fungsi terbilang
 function terbilang($angka) {
@@ -71,26 +71,11 @@ $total_rekap = mysqli_fetch_assoc(mysqli_query($conn, "
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#f5f7fa] text-gray-800 font-sans">
-
-  <header class="bg-purple-700 text-white px-6 py-6 shadow-lg flex justify-between items-center h-28">
-  <div>
-    <h1 class="text-2xl font-bold mb-1">💰 Sistem Informasi Keuangan Desa</h1>
-    <p class="text-sm opacity-80">Dashboard Bendahara | Transparansi & Akuntabilitas</p>
-  </div>
-  <div class="text-right">
-    <p class="text-sm">👋 Selamat datang, <strong>Bendahara</strong></p>
-    <a href="../logout.php" class="text-red-300 hover:text-white text-xs underline">Keluar</a>
-  </div>
-</header>
-
+<!-- HEADER -->
+ <?php include '../includes/header.php'; ?>
   <div class="flex">
     <!-- SIDEBAR -->
-    <aside class="w-64 bg-purple-800 text-white min-h-screen px-6 py-8">
-      <h2 class="text-xl font-bold mb-8 text-center">💰 Menu</h2>
-      <nav class="space-y-3">
-        <a href="dashboard_bendahara.php" class="block bg-purple-700 px-4 py-2 rounded-md">⬅️ Kembali ke Dashboard</a>
-      </nav>
-    </aside>
+    <?php include '../includes/sidebar.php'; ?>
 
     <!-- MAIN CONTENT -->
     <main class="flex-1 p-10 flex flex-col items-center">
@@ -186,13 +171,7 @@ $total_rekap = mysqli_fetch_assoc(mysqli_query($conn, "
 </div>
     </main>
   </div>  
-  
-
-  <!-- FOOTER -->
-  <footer class="text-center text-sm text-gray-500 py-4">
-    &copy; <?= date('Y') ?> Sistem Keuangan Desa. All rights reserved.
-  </footer>
-
+<?php include '../includes/footer.php'; ?>
   <script>
     function toggleSumberLain() {
       var sumber = document.getElementById("sumber").value;

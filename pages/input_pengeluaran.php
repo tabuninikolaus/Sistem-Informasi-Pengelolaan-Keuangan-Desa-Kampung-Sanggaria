@@ -30,7 +30,7 @@ if (isset($_POST['konfirmasi_pengajuan']) && isset($_SESSION['pengajuan_data']))
     $keterangan = $data['keterangan'];
     $buktiJson = $data['bukti'];
 
-    $query = "INSERT INTO pengeluaran_ajuan (tanggal_pengajuan, id_anggaran, jumlah_ajuan, keterangan, dokumen_pengajuan, status_ajuan, catatan_admin)
+    $query = "INSERT INTO pengeluaran_ajuan (tanggal_pengajuan, id_anggaran, jumlah_ajuan, keterangan, dokumen_pengajuan, status_ajuan,catatan_admin)
               VALUES ('$tanggal', '$id_anggaran', '$jumlah', '$keterangan', '$buktiJson', 'menunggu', 'Pengeluaran di atas 50 juta. Menunggu verifikasi kades.')";
     if (mysqli_query($conn, $query)) {
         echo "<script>alert('Ajuan pengeluaran berhasil dikirim ke kades'); window.location.href='input_pengeluaran.php';</script>";
@@ -126,7 +126,6 @@ while ($kg = mysqli_fetch_assoc($allKegiatan)) {
 
 ?>
 
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -136,24 +135,13 @@ while ($kg = mysqli_fetch_assoc($allKegiatan)) {
 </head>
 <body class="bg-[#f5f7fa] text-gray-800 font-sans">
 
-<header class="bg-purple-700 text-white px-6 py-6 shadow-lg flex justify-between items-center h-28">
-  <div>
-    <h1 class="text-2xl font-bold mb-1">Sistem Informasi Keuangan Desa</h1>
-    <p class="text-sm opacity-80">Dashboard Bendahara | Transparansi & Akuntabilitas</p>
-  </div>
-  <div class="text-right">
-    <p class="text-sm">Selamat datang, <strong>Bendahara</strong></p>
-    <a href="../logout.php" class="text-red-300 hover:text-white text-xs underline">Keluar</a>
-  </div>
-</header>
+<!-- HEADER -->
+<?php include '../includes/header.php'; ?>
 
 <div class="flex">
-  <aside class="w-64 bg-purple-800 text-white min-h-screen px-6 py-8">
-    <h2 class="text-xl font-bold mb-8 text-center">Menu</h2>
-    <nav class="space-y-3">
-      <a href="dashboard_bendahara.php" class="block bg-purple-700 px-4 py-2 rounded-md">⬅️ Kembali ke Dashboard</a>
-    </nav>
-  </aside>
+ <!-- SIDEBAR -->
+<?php include '../includes/sidebar.php'; ?>
+
 
   <main class="flex-1 p-10">
     <h2 class="text-2xl font-bold mb-6 text-purple-700">Form Input Pengeluaran Dana</h2>
@@ -277,17 +265,8 @@ while ($kg = mysqli_fetch_assoc($allKegiatan)) {
 </div>
   </main>
 </div>
-
-<footer class="bg-[#1f2937] text-gray-200 py-14 mt-12 w-full">
-  <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm">
-    <p>&copy; <?= date('Y') ?> <span class="font-semibold text-white">Sistem Informasi Keuangan Desa Sanggaria</span>. All rights reserved.</p>
-    <div class="flex space-x-6 mt-3 md:mt-0 text-gray-300">
-      <a href="#tentang" class="hover:underline">Tentang</a>
-      <a href="#kegiatan" class="hover:underline">Kegiatan</a>
-      <a href="#feedback" class="hover:underline">Feedback</a>
-    </div>
-  </div>
-</footer>
+<!-- FOOTER -->
+<?php include '../includes/footer.php'; ?>
 
 
 <script>

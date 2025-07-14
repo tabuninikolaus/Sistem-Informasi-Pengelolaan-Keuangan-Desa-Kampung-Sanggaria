@@ -2,6 +2,10 @@
 include '../config/koneksi.php';
 session_start();
 
+
+// NOTIF STUFFS
+mysqli_query($conn, "UPDATE log_verifikasi SET status_dibaca = 'sudah' WHERE untuk = 'bendahara' AND status_dibaca = 'belum'");
+
 // Ambil data verifikasi pengeluaran langsung dari pengeluaran_ajuan
 $log_pengeluaran = mysqli_query($conn, "
   SELECT 
@@ -47,29 +51,14 @@ if (!$log_laporan) {
   <title>Notifikasi Verifikasi</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 flex">
+<body class="bg-[#f5f7fa] text-gray-800 font-sans">
 
-<!-- Sidebar -->
-<aside class="w-64 bg-purple-800 text-white min-h-screen px-6 py-8 sticky top-0">
-  <h2 class="text-xl font-bold mb-8 text-center">Menu</h2>
-  <nav class="space-y-3">
-    <a href="dashboard_bendahara.php" class="block bg-purple-700 px-4 py-2 rounded-md">⬅️ Kembali ke Dashboard</a>
-  </nav>
-</aside>
+<!-- SIDEBAR -->
+<?php include '../includes/header.php'; ?>
 
-<!-- Header -->
-<div class="flex-1">
-  <header class="bg-purple-700 text-white px-6 py-6 shadow-lg flex justify-between items-center">
-    <div>
-      <h1 class="text-2xl font-bold mb-1">Sistem Informasi Keuangan Desa</h1>
-      <p class="text-sm opacity-80">Dashboard Bendahara | Transparansi & Akuntabilitas</p>
-    </div>
-    <div class="text-right">
-      <p class="text-sm">Selamat datang, <strong>Bendahara</strong></p>
-      <a href="../logout.php" class="text-red-300 hover:text-white text-xs underline">Keluar</a>
-    </div>
-  </header>
-
+<div class="flex">
+  <!-- SIDEBAR -->
+<?php include '../includes/sidebar.php'; ?>
   <!-- Konten Utama -->
   <main class="p-6">
     <header class="mb-8">
@@ -149,7 +138,12 @@ if (!$log_laporan) {
         </tbody>
       </table>
     </div>
+    </div>
+      <!-- FOOTER -->
+<?php include '../includes/footer.php'; ?>
   </main>
+
+
 </div>
 </body>
 </html>
