@@ -10,27 +10,6 @@ $mpdf = new Mpdf();
 $html = '<h2 style="text-align:center;">Laporan Keuangan Desa</h2>';
 $html .= "<p style='text-align:center;'>Tahap: <strong>" . strtoupper(str_replace('_', ' ', $tahap)) . "</strong> | Tahun: <strong>$tahun</strong></p><hr>";
 
-$html .= '
-<table border="1" cellspacing="0" cellpadding="5" width="100%">
-  <thead>
-    <tr>
-      <th>No</th>
-      <th>Nama Kegiatan</th>
-      <th>Alokasi Dana</th>
-      <th>Total Pengeluaran</th>
-      <th>Realisasi (%)</th>
-    </tr>
-  </thead>
-  <tbody>
-';
-
-// Fungsi untuk hitung total pengeluaran
-function getTotalPengeluaran($conn, $id_anggaran) {
-  $q = mysqli_query($conn, "SELECT SUM(jumlah) as total FROM pengeluaran WHERE id_anggaran = '$id_anggaran'");
-  $d = mysqli_fetch_assoc($q);
-  return $d['total'] ?? 0;
-}
-
 // Mapping bulan per tahap
 $mapping = [
   'tahap_i' => [1, 3],
@@ -38,41 +17,45 @@ $mapping = [
   'tahap_iii' => [9, 12],
   'tahunan' => [1, 12]
 ];
-
 [$startMonth, $endMonth] = $mapping[$tahap] ?? [1, 12];
 
-// Ambil anggaran utama dari periode tahap
-$data_anggaran = mysqli_query($conn, "SELECT * FROM anggaran WHERE tahun='$tahun' AND MONTH(tanggal_input_kegiatan) BETWEEN $startMonth AND $endMonth");
+// Fungsi: Total pengeluaran valid
+function getTotalPengeluaranValid($conn, $id_anggaran) {
+  $q = mysqli_query($conn, "SELECT SUM(jumlah) as total FROM pengeluaran WHERE id_anggaran = '$id_anggaran' AND status_detail_pengeluaran = 'Valid'");
+  $d = mysqli_fetch_assoc($q);
+  return $d['total'] ?? 0;
+}
 
+// Fungsi: Detail pengeluaran per tahap
+function getPengeluaranTahap($conn, $id_anggaran, $startMonth, $endMonth, $tahun) {
+  return mysqli_query($conn, "SELECT * FROM pengeluaran 
+    WHERE id_anggaran = '$id_anggaran' 
+    AND YEAR(tanggal) = '$tahun' 
+    AND MONTH(tanggal) BETWEEN $startMonth AND $endMonth
+    ORDER BY tanggal ASC");
+}
+
+// Ambil data anggaran
+$data_anggaran = mysqli_query($conn, "SELECT * FROM anggaran WHERE tahun='$tahun' AND MONTH(tanggal_input_kegiatan) BETWEEN $startMonth AND $endMonth");
 $anggaranList = [];
 while ($row = mysqli_fetch_assoc($data_anggaran)) {
   $anggaranList[] = $row;
 }
 
-// Tambahan untuk Tahap II: kegiatan dari Tahap I (Jan-Mar) yang belum 100%
+// Tambahan logika kegiatan tertunda
 if ($tahap === 'tahap_ii') {
   $q = mysqli_query($conn, "SELECT * FROM anggaran WHERE tahun='$tahun' AND MONTH(tanggal_input_kegiatan) BETWEEN 1 AND 3");
   while ($row = mysqli_fetch_assoc($q)) {
-    $total = getTotalPengeluaran($conn, $row['id_anggaran']);
-    if ($total < $row['alokasi_dana']) {
-      $anggaranList[] = $row;
-    }
+    $total = getTotalPengeluaranValid($conn, $row['id_anggaran']);
+    if ($total < $row['alokasi_dana']) $anggaranList[] = $row;
   }
-}
-
-// Tambahan untuk Tahap III: kegiatan dari Tahap I dan II (Jan–Aug) yang belum 100%
-if ($tahap === 'tahap_iii') {
+} elseif ($tahap === 'tahap_iii') {
   $q = mysqli_query($conn, "SELECT * FROM anggaran WHERE tahun='$tahun' AND MONTH(tanggal_input_kegiatan) BETWEEN 1 AND 8");
   while ($row = mysqli_fetch_assoc($q)) {
-    $total = getTotalPengeluaran($conn, $row['id_anggaran']);
-    if ($total < $row['alokasi_dana']) {
-      $anggaranList[] = $row;
-    }
+    $total = getTotalPengeluaranValid($conn, $row['id_anggaran']);
+    if ($total < $row['alokasi_dana']) $anggaranList[] = $row;
   }
-}
-
-// Tambahan untuk Tahunan: semua data tahun berjalan (Jan–Des)
-if ($tahap === 'tahunan') {
+} elseif ($tahap === 'tahunan') {
   $anggaranList = [];
   $q = mysqli_query($conn, "SELECT * FROM anggaran WHERE tahun='$tahun'");
   while ($row = mysqli_fetch_assoc($q)) {
@@ -80,22 +63,81 @@ if ($tahap === 'tahunan') {
   }
 }
 
+// ======================
+// BAGIAN 1: TABEL REKAP
+// ======================
+$html .= '
+<h4>Ringkasan Alokasi dan Progres Kegiatan</h4>
+<table border="1" cellspacing="0" cellpadding="5" width="100%">
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Nama Kegiatan</th>
+      <th>Alokasi Dana</th>
+      <th>Total Pengeluaran (Valid)</th>
+      <th>Progres Kegiatan (%)</th>
+    </tr>
+  </thead>
+  <tbody>
+';
+
 $no = 1;
 foreach ($anggaranList as $a) {
   $alokasi = $a['alokasi_dana'];
-  $total = getTotalPengeluaran($conn, $a['id_anggaran']);
+  $total = getTotalPengeluaranValid($conn, $a['id_anggaran']);
   $persen = ($alokasi > 0) ? round(($total / $alokasi) * 100) : 0;
+  $progres_text = ($persen == 100) ? "100% (Selesai)" : "$persen%";
 
   $html .= "<tr>
     <td>$no</td>
     <td>{$a['nama_kegiatan']}</td>
     <td>Rp " . number_format($alokasi, 0, ',', '.') . "</td>
     <td>Rp " . number_format($total, 0, ',', '.') . "</td>
-    <td>$persen%</td>
+    <td>$progres_text</td>
   </tr>";
   $no++;
 }
 
+$html .= '</tbody></table><br><br>';
+
+// ===========================
+// BAGIAN 2: DETAIL PENGELUARAN
+// ===========================
+$html .= '<h4>Detail Pengeluaran</h4>';
+$html .= '
+<table border="1" cellspacing="0" cellpadding="5" width="100%">
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Nama Kegiatan</th>
+      <th>Tanggal Pengeluaran</th>
+      <th>Jumlah Pengeluaran</th>
+      <th>Keterangan</th>
+    </tr>
+  </thead>
+  <tbody>
+';
+
+$noDetail = 1;
+foreach ($anggaranList as $a) {
+  $pengeluaran = getPengeluaranTahap($conn, $a['id_anggaran'], $startMonth, $endMonth, $tahun);
+  while ($p = mysqli_fetch_assoc($pengeluaran)) {
+    $html .= "<tr>
+      <td>$noDetail</td>
+      <td>{$a['nama_kegiatan']}</td>
+      <td>{$p['tanggal']}</td>
+      <td>Rp " . number_format($p['jumlah'], 0, ',', '.') . "</td>
+      <td>{$p['keterangan']}</td>
+    </tr>";
+    $noDetail++;
+  }
+}
+
+if ($noDetail === 1) {
+  $html .= '<tr><td colspan="5" style="text-align:center;"><em>Tidak ada transaksi</em></td></tr>';
+}
+
 $html .= '</tbody></table>';
+
 $mpdf->WriteHTML($html);
 $mpdf->Output("laporan_keuangan_{$tahap}_{$tahun}.pdf", 'I');

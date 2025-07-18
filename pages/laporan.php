@@ -140,6 +140,30 @@ function cekPerubahanData($conn, $jenis_laporan, $tahap, $tahun) {
 
   return ($pemasukan_baru + $pengeluaran_baru + $anggaran_baru) > 0;
 }
+function getTotalPengeluaranValid($conn, $id_anggaran, $startMonth, $endMonth) {
+  $q = mysqli_query($conn, "
+    SELECT SUM(jumlah) as total 
+    FROM pengeluaran 
+    WHERE id_anggaran='$id_anggaran' 
+      AND MONTH(tanggal) BETWEEN $startMonth AND $endMonth 
+      AND status_detail_pengeluaran='Valid'
+  ");
+  $r = mysqli_fetch_assoc($q);
+  return $r['total'] ?? 0;
+}
+function getTotalPengeluaranValidTahunan($conn, $id_anggaran) {
+  $q = mysqli_query($conn, "
+    SELECT SUM(jumlah) AS total 
+    FROM pengeluaran 
+    WHERE id_anggaran = '$id_anggaran' 
+      AND status_detail_pengeluaran = 'Valid'
+  ");
+  $r = mysqli_fetch_assoc($q);
+  return $r['total'] ?? 0;
+}
+
+
+
 ?>
 
 <!DOCTYPE html>
@@ -178,95 +202,139 @@ function cekPerubahanData($conn, $jenis_laporan, $tahap, $tahun) {
       $anggaran = getAnggaranByTahapCustom($conn, $start, $end, $tahun, $key); 
       ?>
       <div class="mb-10">
-        <h2 class="text-lg font-semibold text-green-600 mb-2"><?= $label ?></h2>
-        <div class="overflow-auto">
-          <table class="w-full border text-sm">
+  <h2 class="text-lg font-semibold text-green-600 mb-2"><?= $label ?></h2>
+  <div class="overflow-auto">
+   <table class="w-full border text-sm mb-4">
             <thead class="bg-green-100">
               <tr>
+                <th class="border px-2 py-1">No</th>
                 <th class="border px-2 py-1">Nama Kegiatan</th>
                 <th class="border px-2 py-1">Alokasi Dana</th>
-                <th class="border px-2 py-1">Realisasi (%)</th>
-                <th class="border px-2 py-1">Detail Transaksi</th>
+                <th class="border px-2 py-1">Total Pengeluaran</th>
+                <th class="border px-2 py-1">Sisa Dana</th>
+                <th class="border px-2 py-1">Progres kegiatan(%)</th>
               </tr>
             </thead>
             <tbody>
-            <?php foreach ($anggaran as $a):
-             $total = getTotalPengeluaranSampaiTahap($conn, $a['id_anggaran'], $end);
-             $persen = $a['alokasi_dana'] > 0 ? round(($total / $a['alokasi_dana']) * 100) : 0;
-              $detail = getPengeluaranTahap($conn, $a['id_anggaran'], $start, $end);
-            ?>
+              <?php $no = 1; foreach ($anggaran as $a): 
+                $total = getTotalPengeluaranValid($conn, $a['id_anggaran'], $start, $end);
+                $progres = ($a['alokasi_dana'] > 0) ? round(($total / $a['alokasi_dana']) * 100) : 0;
+                $sisa = $a['alokasi_dana'] - $total;
+              ?>
               <tr>
-                <td class="border px-2 py-1 align-top"><?= $a['nama_kegiatan'] ?></td>
-                <td class="border px-2 py-1 align-top">Rp <?= number_format($a['alokasi_dana'], 0, ',', '.') ?></td>
-                <td class="border px-2 py-1 align-top"><?= $persen ?>%</td>
-                <td class="border px-2 py-1">
-                  <?php if (mysqli_num_rows($detail) > 0): ?>
-                    <div class="overflow-auto max-h-48">
-                      <table class="text-xs border w-full">
-                        <thead class="bg-gray-100">
-                          <tr>
-                            <th class="border px-2">Tanggal</th>
-                            <th class="border px-2">Jumlah</th>
-                            <th class="border px-2">Bukti</th>
-                            <th class="border px-2">Keterangan</th>
-                            <th class="border px-2">Nama Kegiatan</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <?php while ($p = mysqli_fetch_assoc($detail)): ?>
-                            <tr>
-                              <td class="border px-2"><?= $p['tanggal'] ?></td>
-                              <td class="border px-2">Rp <?= number_format($p['jumlah'], 0, ',', '.') ?></td>
-                              <td class="border px-2">
-                                <?php
-                                $bukti = json_decode($p['bukti_pengeluaran'], true);
-                                if ($bukti) {
-                                  foreach ($bukti as $file) {
-                                    echo "<a href='../uploads/$file' class='text-blue-500 underline block' target='_blank'>Lihat</a>";
-                                  }
-                                }
-                                ?>
-                              </td>
-                              <td class="border px-2"><?= $p['keterangan'] ?></td>
-                              <td class="border px-2"><?= $a['nama_kegiatan'] ?></td>
-                            </tr>
-                          <?php endwhile; ?>
-                        </tbody>
-                      </table>
-                    </div>
-                  <?php else: ?>
-                    <span class="text-gray-500 italic">Tidak ada transaksi</span>
-                  <?php endif; ?>
-                </td>
+                <td class="border px-2 py-1 text-center"><?= $no++ ?></td>
+                <td class="border px-2 py-1"><?= $a['nama_kegiatan'] ?></td>
+                <td class="border px-2 py-1">Rp <?= number_format($a['alokasi_dana'], 0, ',', '.') ?></td>
+                <td class="border px-2 py-1">Rp <?= number_format($total, 0, ',', '.') ?></td>
+                <td class="border px-2 py-1">Rp <?= number_format($sisa, 0, ',', '.') ?></td>
+                <td class="border px-2 py-1"><?= $progres ?>%</td>
               </tr>
-            <?php endforeach; ?>
+              <?php endforeach; ?>
             </tbody>
           </table>
         </div>
-        <div class="mt-2 flex items-center gap-2">
-          <a href="export_pdf_laporan.php?tahap=<?= $key ?>&tahun=<?= $tahun ?>" class="bg-green-600 text-white px-3 py-1 rounded">Unduh PDF</a>
-          <a href="export_excel_laporan.php?tahap=<?= $key ?>&tahun=<?= $tahun ?>" class="bg-blue-600 text-white px-3 py-1 rounded">Unduh Excel</a>
-         <?php
-                if (!$verif) {
-                  echo "<span class='text-sm text-gray-500'>Belum diajukan</span>
-                  <button onclick=\"showModalAjukan('pertahap', '$key', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan</button>";
-                } elseif ($verif['status_ajuan'] === 'menunggu') {
-                  echo '<span class="text-sm italic text-gray-500">Menunggu verifikasi</span>';
-                } elseif ($verif['status_ajuan'] === 'ditolak') {
-                  echo "<span class='text-sm text-red-600'>Verifikasi ditolak</span>
-                  <button onclick=\"showModalAjukan('pertahap', '$key', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan Ulang</button>";
-                } elseif ($verif['status_ajuan'] === 'disetujui') {
-                  if ($perubahan) {
-                    echo "<span class='text-sm text-orange-600'>Ada perubahan data, ajukan ulang</span>
-                    <button onclick=\"showModalAjukan('pertahap', '$key', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan Ulang</button>";
-                  } else {
-                    echo "<span class='text-sm text-green-600'>Telah diverifikasi</span>";
-                  }
-                }
-              ?>
 
-        </div>
-      </div>
+  <!-- DETAIL PENGELUARAN -->
+<h3 class="mt-2 font-semibold text-gray-700 text-sm">Detail Pengeluaran <?= $label ?> <?= $tahun ?></h3>
+<div class="overflow-auto max-h-96 mt-2 mb-4">
+  <table class="text-sm border w-full">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="border px-2">No</th>
+        <th class="border px-2">Nama Kegiatan</th>
+        <th class="border px-2">Tanggal Pengeluaran</th>
+        <th class="border px-2">Jumlah Pengeluaran</th>
+        <th class="border px-2">Bukti</th>
+        <th class="border px-2">Keterangan Pengeluaran</th>
+        <th class="border px-2">Detail Pengeluaran</th>
+        <th class="border px-2">Status Detail Pengeluaran</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php 
+      $no_detail = 1;
+      foreach ($anggaran as $a):
+        $detail = getPengeluaranTahap($conn, $a['id_anggaran'], $start, $end);
+        while ($p = mysqli_fetch_assoc($detail)):
+      ?>
+      <tr>
+        <td class="border px-2"><?= $no_detail++ ?></td>
+        <td class="border px-2"><?= $a['nama_kegiatan'] ?></td>
+        <td class="border px-2"><?= $p['tanggal'] ?></td>
+        <td class="border px-2">Rp <?= number_format($p['jumlah'], 0, ',', '.') ?></td>
+        <td class="border px-2">
+          <?php
+          $bukti = json_decode($p['bukti_pengeluaran'], true);
+          if ($bukti) {
+            foreach ($bukti as $file) {
+              echo "<a href='../uploads/$file' class='text-blue-500 underline block' target='_blank'>Lihat</a>";
+            }
+          } else {
+            echo "<span class='text-gray-400 italic'>Belum ada</span>";
+          }
+          ?>
+        </td>
+        <td class="border px-2"><?= $p['keterangan'] ?></td>
+        <td class="border px-2">
+          <?php
+          $dokumen = $p['dokumen_detail_pengeluaran'];
+          if (!empty($dokumen)) {
+            if (@json_decode($dokumen)) {
+              $dokumen_files = json_decode($dokumen, true);
+            } else {
+              $dokumen_files = explode(',', $dokumen);
+            }
+
+            foreach ($dokumen_files as $file) {
+              echo "<a href='../uploads/$file' class='text-green-600 underline block' target='_blank'>Lihat Dokumen</a>";
+            }
+          } else {
+            echo "<span class='text-gray-400 italic'>Belum ada</span>";
+          }
+          ?>
+        </td>
+        <td class="border px-2">
+          <?= $p['status_detail_pengeluaran'] ?? 'Belum Valid' ?>
+        </td>
+      </tr>
+      <?php endwhile; endforeach; ?>
+
+      <?php if ($no_detail === 1): ?>
+      <tr>
+        <td colspan="8" class="text-center text-gray-500 italic border px-2 py-2">Tidak ada transaksi</td>
+      </tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
+
+  </div>
+
+  <!-- TOMBOL -->
+  <div class="mt-2 flex items-center gap-2">
+    <a href="export_pdf_laporan.php?tahap=<?= $key ?>&tahun=<?= $tahun ?>" class="bg-green-600 text-white px-3 py-1 rounded">Unduh PDF</a>
+    <a href="export_excel_laporan.php?tahap=<?= $key ?>&tahun=<?= $tahun ?>" class="bg-blue-600 text-white px-3 py-1 rounded">Unduh Excel</a>
+
+    <?php
+    if (!$verif) {
+      echo "<span class='text-sm text-gray-500'>Belum diajukan</span>
+      <button onclick=\"showModalAjukan('pertahap', '$key', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan</button>";
+    } elseif ($verif['status_ajuan'] === 'menunggu') {
+      echo '<span class="text-sm italic text-gray-500">Menunggu verifikasi</span>';
+    } elseif ($verif['status_ajuan'] === 'ditolak') {
+      echo "<span class='text-sm text-red-600'>Verifikasi ditolak</span>
+      <button onclick=\"showModalAjukan('pertahap', '$key', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan Ulang</button>";
+    } elseif ($verif['status_ajuan'] === 'disetujui') {
+      if ($perubahan) {
+        echo "<span class='text-sm text-orange-600'>Ada perubahan data, ajukan ulang</span>
+        <button onclick=\"showModalAjukan('pertahap', '$key', $tahun)\" class='bg-yellow-500 text-white px-2 py-1 rounded'>Ajukan Ulang</button>";
+      } else {
+        echo "<span class='text-sm text-green-600'>Telah diverifikasi</span>";
+      }
+    }
+    ?>
+  </div>
+</div>
+
       <!-- LAPORAN LPJ TAHUNAN -->
       <?php endforeach; ?>
                 
@@ -292,34 +360,40 @@ function cekPerubahanData($conn, $jenis_laporan, $tahap, $tahun) {
 ?>
 
 <div class="overflow-auto mb-4">
-  <table class="w-full border text-sm">
-    <thead class="bg-indigo-100">
-      <tr>
-        <th class="border px-2 py-1">Nama Kegiatan</th>
-        <th class="border px-2 py-1">Alokasi Dana</th>
-        <th class="border px-2 py-1">Pengeluaran</th>
-        <th class="border px-2 py-1">Realisasi (%)</th>
-      </tr>
-    </thead>
-    <tbody>
-    <?php while ($a = mysqli_fetch_assoc($data)):
-      $total = getTotalPengeluaranByAnggaran($conn, $a['id_anggaran']);
-      $persen = getPersentaseRealisasi($conn, $a['id_anggaran']);
-    ?>
-      <tr>
-        <td class="border px-2 py-1"><?= $a['nama_kegiatan'] ?></td>
-        <td class="border px-2 py-1">Rp <?= number_format($a['alokasi_dana'], 0, ',', '.') ?></td>
-        <td class="border px-2 py-1">Rp <?= number_format($total, 0, ',', '.') ?></td>
-        <td class="border px-2 py-1"><?= $persen ?>%</td>
-      </tr>
-    <?php endwhile; ?>
-    </tbody>
-  </table>
+ <table class="w-full border text-sm">
+  <thead class="bg-indigo-100">
+    <tr>
+      <th class="border px-2 py-1">No</th>
+      <th class="border px-2 py-1">Nama Kegiatan</th>
+      <th class="border px-2 py-1">Alokasi Dana</th>
+      <th class="border px-2 py-1">Pengeluaran</th>
+      <th class="border px-2 py-1">Progres Kegiatan (%)</th>
+      <th class="border px-2 py-1">Sisa Dana</th>
+    </tr>
+  </thead>
+  <tbody>
+  <?php $no = 1; while ($a = mysqli_fetch_assoc($data)):
+   $total = getTotalPengeluaranValidTahunan($conn, $a['id_anggaran']);
+   $persen = ($a['alokasi_dana'] > 0) ? round(($total / $a['alokasi_dana']) * 100) : 0;
+   $sisa = $a['alokasi_dana'] - $total;
+  ?>
+    <tr>
+      <td class="border px-2 py-1 text-center"><?= $no++ ?></td>
+      <td class="border px-2 py-1"><?= $a['nama_kegiatan'] ?></td>
+      <td class="border px-2 py-1">Rp <?= number_format($a['alokasi_dana'], 0, ',', '.') ?></td>
+      <td class="border px-2 py-1">Rp <?= number_format($total, 0, ',', '.') ?></td>
+      <td class="border px-2 py-1"><?= $persen ?>%</td>
+      <td class="border px-2 py-1">Rp <?= number_format($sisa, 0, ',', '.') ?></td>
+    </tr>
+  <?php endwhile; ?>
+  </tbody>
+</table>
+
 </div>
 
 <div class="flex flex-wrap gap-2 items-center">
-  <a href="export_pdf.php?tahap=tahunan&tahun=<?= $tahun ?>" class="bg-green-600 text-white px-3 py-1 rounded">📄 Unduh PDF</a>
-  <a href="export_excel.php?tahap=tahunan&tahun=<?= $tahun ?>" class="bg-blue-600 text-white px-3 py-1 rounded">📊 Unduh Excel</a>
+ <a href="export_pdf_laporan.php?tahap=tahunan&tahun=<?= $tahun ?>" class="bg-green-600 text-white px-3 py-1 rounded">📄 Unduh PDF</a>
+<a href="export_excel_laporan.php?tahap=tahunan&tahun=<?= $tahun ?>" class="bg-blue-600 text-white px-3 py-1 rounded">📊 Unduh Excel</a>
 
   <?php if (isset($verif) && $verif): ?>
   <?php if ($verif['status_ajuan'] === 'menunggu'): ?>

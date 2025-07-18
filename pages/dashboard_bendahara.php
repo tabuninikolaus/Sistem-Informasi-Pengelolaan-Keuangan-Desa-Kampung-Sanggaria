@@ -46,16 +46,17 @@
           $jml_peng_disetujui = 0;
           $jml_peng_ditolak = 0;
 
-          while ($row = mysqli_fetch_assoc($notif_query)) {
-              if ($row['jenis'] == 'laporan') {
-                  if ($row['status'] == 'disetujui') $jml_lap_disetujui++;
-                  if ($row['status'] == 'ditolak') $jml_lap_ditolak++;
-              }
-              if ($row['jenis'] == 'pengeluaran') {
-                  if ($row['status'] == 'disetujui') $jml_peng_disetujui++;
-                  if ($row['status'] == 'ditolak') $jml_peng_ditolak++;
-              }
+              while ($row = mysqli_fetch_assoc($notif_query)) {
+          if ($row['jenis'] == 'laporan') {
+              if ($row['status'] == 'disetujui') $jml_lap_disetujui++;
+              if ($row['status'] == 'ditolak') $jml_lap_ditolak++;
           }
+          if ($row['jenis'] == 'pengeluaran') {
+              if ($row['status'] == 'diterima') $jml_peng_disetujui++;  // UBAH INI
+              if ($row['status'] == 'ditolak') $jml_peng_ditolak++;
+          }
+          }
+
 $total_bendahara_notif = $jml_lap_disetujui + $jml_lap_ditolak + $jml_peng_disetujui + $jml_peng_ditolak;
 ?>
 
@@ -98,6 +99,7 @@ $total_bendahara_notif = $jml_lap_disetujui + $jml_lap_ditolak + $jml_peng_diset
         <a href="input_pengeluaran.php" class="block hover:bg-slate-600 px-4 py-2 rounded">💸 Input Pengeluaran</a>
         <a href="laporan.php" class="block hover:bg-slate-600 px-4 py-2 rounded">📁 Laporan</a>
         <a href="notifikasi_verifikasi.php" class="block hover:bg-slate-600 px-4 py-2 rounded">🔔 Notifikasi Verifikasi</a>
+        <a href="input_detail_pengeluaran.php" class="block hover:bg-slate-600 px-4 py-2 rounded">🔔 Input Detail Pengeluaran</a>
         <a href="managemen_akun.php" class="block hover:bg-slate-600 px-4 py-2 rounded">👥 Manajemen Akun</a>
         <a href="backup_data.php" class="block hover:bg-slate-600 px-4 py-2 rounded">📂 Backup</a>
         <a href="lihat_feddback.php" class="block hover:bg-slate-600 px-4 py-2 rounded">💬 Feedback</a>

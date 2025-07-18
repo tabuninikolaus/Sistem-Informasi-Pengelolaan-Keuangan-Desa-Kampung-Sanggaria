@@ -49,8 +49,8 @@ function getAnggaranByTahap($conn, $tahun) {
     return mysqli_query($conn, "SELECT * FROM anggaran WHERE tahun='$tahun'");
 }
 
-function getTotalPengeluaran($conn, $id_anggaran) {
-    $sql = "SELECT SUM(jumlah) as total FROM pengeluaran WHERE id_anggaran='$id_anggaran'";
+function getTotalPengeluaranValid($conn, $id_anggaran) {
+    $sql = "SELECT SUM(jumlah) as total FROM pengeluaran WHERE id_anggaran='$id_anggaran' AND status_detail_pengeluaran='Valid'";
     $result = mysqli_query($conn, $sql);
     $row = mysqli_fetch_assoc($result);
     return $row['total'] ?? 0;
@@ -101,7 +101,7 @@ $tahapan = [
               <th class="border px-2 py-1">No</th>
               <th class="border px-2 py-1">Nama Kegiatan</th>
               <th class="border px-2 py-1">Alokasi Dana</th>
-              <th class="border px-2 py-1">Realisasi</th>
+              <th class="border px-2 py-1">Progres/Pengeluaran</th>
               <th class="border px-2 py-1">Sisa Dana</th>
             </tr>
           </thead>
@@ -110,7 +110,7 @@ $tahapan = [
             $anggaran = getAnggaranByTahap($conn, $tahun);
             $no = 1;
             while ($a = mysqli_fetch_assoc($anggaran)):
-              $total = getTotalPengeluaran($conn, $a['id_anggaran']);
+              $total = getTotalPengeluaranValid($conn, $a['id_anggaran']);
               $sisa = $a['alokasi_dana'] - $total;
               $persen = $a['alokasi_dana'] > 0 ? round(($total / $a['alokasi_dana']) * 100) : 0;
             ?>
@@ -143,7 +143,7 @@ $tahapan = [
               <th class="border px-2 py-1">No</th>
               <th class="border px-2 py-1">Nama Kegiatan</th>
               <th class="border px-2 py-1">Alokasi Dana</th>
-              <th class="border px-2 py-1">Realisasi</th>
+              <th class="border px-2 py-1">Progres/Pengeluaran</th>
               <th class="border px-2 py-1">Sisa Dana</th>
             </tr>
           </thead>
@@ -152,7 +152,7 @@ $tahapan = [
             $data = getAnggaranByTahap($conn, $tahun);
             $no = 1;
             while ($a = mysqli_fetch_assoc($data)):
-              $total = getTotalPengeluaran($conn, $a['id_anggaran']);
+              $total = getTotalPengeluaranValid($conn, $a['id_anggaran']);
               $sisa = $a['alokasi_dana'] - $total;
               $persen = $a['alokasi_dana'] > 0 ? round(($total / $a['alokasi_dana']) * 100) : 0;
             ?>

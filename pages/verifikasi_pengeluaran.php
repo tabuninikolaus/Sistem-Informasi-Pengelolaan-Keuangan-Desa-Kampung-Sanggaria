@@ -5,6 +5,16 @@ session_start();
 // Dummy user (ganti sesuai sistem loginmu)
 $user = ['nama_lengkap' => 'Kepala Desa', 'foto_profil' => 'assets/img/default-user.png'];
 
+function insertLogVerifikasi($conn, $jenis, $id, $status, $alasan, $untuk = 'bendahara') {
+    $status_dibaca = 'belum';
+    $waktu = date('Y-m-d H:i:s');
+    $stmt = $conn->prepare("INSERT INTO log_verifikasi 
+        (jenis, id_referensi, status, alasan, waktu, untuk, status_dibaca) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssssss", $jenis, $id, $status, $alasan, $waktu, $untuk, $status_dibaca);
+    $stmt->execute();
+}
+
 $query = "
     SELECT a.id_ajuan, a.tanggal_pengajuan, a.id_anggaran, ang.nama_kegiatan, ang.alokasi_dana,
            a.jumlah_ajuan, a.keterangan, a.dokumen_pengajuan
@@ -34,10 +44,7 @@ if (isset($_POST['terima'])) {
     mysqli_query($conn, "INSERT INTO pengeluaran (tanggal, id_anggaran, jumlah, keterangan, bukti_pengeluaran, status_verifikasi)
         VALUES ('$tanggal', '$id_anggaran', '$jumlah', '$keterangan', '$bukti', 'disetujui')");
 
-    mysqli_query($conn, "INSERT INTO log_verifikasi 
-        (jenis, id_referensi, status, alasan, waktu, untuk, status_dibaca) 
-        VALUES ('pengeluaran', '$id_ajuan', 'diterima', '$alasan', NOW(), 'bendahara', 'belum')");
-
+    insertLogVerifikasi($conn, 'pengeluaran', $id_ajuan, 'diterima', $alasan);
     header("Location: verifikasi_pengeluaran.php");
     exit;
 }
@@ -52,10 +59,7 @@ if (isset($_POST['tolak'])) {
         SET status_ajuan='ditolak', tanggal_verifikasi='$tanggal', alasan_penolakan_pengeluaran='$alasan' 
         WHERE id_ajuan='$id_ajuan'");
 
-    mysqli_query($conn, "INSERT INTO log_verifikasi 
-        (jenis, id_referensi, status, alasan, waktu, untuk, status_dibaca) 
-        VALUES ('pengeluaran', '$id_ajuan', 'disetujui', '$alasan', NOW(), 'bendahara', 'belum')");
-
+    insertLogVerifikasi($conn, 'pengeluaran', $id_ajuan, 'ditolak', $alasan);
     header("Location: verifikasi_pengeluaran.php");
     exit;
 }

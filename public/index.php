@@ -1,20 +1,23 @@
 <?php
 include '../config/koneksi.php';
 
-// Ambil data kegiatan
 $queryKegiatan = mysqli_query($conn, "
   SELECT 
     a.nama_kegiatan,
     a.alokasi_dana,
     ROUND(
-      (IFNULL(SUM(p.jumlah), 0) / a.alokasi_dana) * 100,
-      2
-    ) AS realisasi_persen
+      (IFNULL(SUM(
+        CASE 
+          WHEN p.status_detail_pengeluaran = 'Valid' THEN p.jumlah 
+          ELSE 0 
+        END
+      ), 0) / a.alokasi_dana) * 100, 2
+    ) AS progres_kegiatan
   FROM anggaran a
   LEFT JOIN pengeluaran p ON p.id_anggaran = a.id_anggaran
   GROUP BY a.id_anggaran
-  HAVING realisasi_persen < 100
 ");
+
 
 // Ambil file PDF yang sudah dipublikasikan
 $folder = '../laporan_publik/';
@@ -111,7 +114,7 @@ $files = array_diff(scandir($folder), ['.', '..']);
           <th class="px-4 py-2 text-left">No</th>
           <th class="px-4 py-2 text-left">Nama Kegiatan</th>
           <th class="px-4 py-2 text-left">Jumlah Alokasi</th>
-          <th class="px-4 py-2 text-left">Realisasi (%)</th>
+          <th class="px-4 py-2 text-left">Progres Kegiatan (%)</th>
         </tr>
       </thead>
       <tbody>
@@ -120,7 +123,7 @@ $files = array_diff(scandir($folder), ['.', '..']);
           <td class="px-4 py-2"><?= $no++ ?></td>
           <td class="px-4 py-2"><?= htmlspecialchars($row['nama_kegiatan']) ?></td>
           <td class="px-4 py-2">Rp <?= number_format($row['alokasi_dana'], 0, ',', '.') ?></td>
-          <td class="px-4 py-2 font-semibold text-primary"><?= $row['realisasi_persen'] ?>%</td>
+          <td class="px-4 py-2 font-semibold text-primary"><?= $row['progres_kegiatan'] ?>%</td>
         </tr>
         <?php endwhile; ?>
       </tbody>
